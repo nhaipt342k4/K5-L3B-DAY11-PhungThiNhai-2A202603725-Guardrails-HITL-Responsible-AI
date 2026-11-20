@@ -1,5 +1,55 @@
 # Day 11 — Controlled Agent Security (2026)
 
+## Thông tin bài nộp
+
+| | |
+|---|---|
+| **Họ và tên** | Phùng Thị Nhài |
+| **MSSV** | 2A202603725 |
+| **Lớp** | Khóa 5 — L3B |
+| **Bài** | Day 11 — Guardrails, HITL & Responsible AI |
+| **Blue** | OpenRouter `liquid/lfm-3-1.7b:free` |
+| **Red / Red Advance** | OpenAI `gpt-4o-mini` |
+
+### Kết quả
+
+| Checkpoint | Kết quả |
+|---|---|
+| CP2 — Guardrails | Chặn injection (kể cả Unicode ẩn, full-width, tiếng Việt) và câu lạc đề; che API key, password, secret, email, SĐT, CCCD |
+| CP3 — Pipeline | Safe bị chặn nhầm 0/6 · Attack bị chặn 7/8 (câu còn lại Blue tự từ chối) · Rate limit 10 qua / 5 chặn · Edge case chặn 4/5 |
+| CP4 — Red team | Red leak 5/5 · Red Advance chặn 5/5 |
+| CP5 — Tự kiểm | Smoke 39/39 · Public 10/10 · `results.json` khớp schema |
+
+Báo cáo tự sinh: [`outputs/lab_report.md`](outputs/lab_report.md).
+
+### Thứ tự lớp bảo vệ (Blue)
+
+```text
+User → RateLimitPlugin → InputGuardrailPlugin → LLM → OutputGuardrailPlugin → Reply
+         (10 req/60s,      (injection + topic,          (redact secret/PII)
+          theo user_id)     chuẩn hóa Unicode)
+Audit log + Monitoring ghi lại mọi request · is_egress_allowed() chặn dữ liệu ra ngoài
+```
+
+### Cách chạy
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env   # điền OPENROUTER_API_KEY + OPENAI_API_KEY, RED_TEAM_PROVIDER=openai
+
+python src/main.py --part 2   # guardrails (in ra terminal)
+python src/main.py --part 3   # → outputs/results.json, audit_log.json, metrics.json
+python src/main.py --part 4   # → outputs/attack_results.json + chi tiết Red / Red Advance
+
+pytest tests/smoke -q
+pytest tests/public -q
+python scripts/grade.py --submission-dir . --out outputs/grade_report.json
+```
+
+---
+
 > 👤 **Hình thức:** bài tập **cá nhân** (1 người / 1 MSSV).  
 > 🎯 **Mục tiêu:** đóng vai **Blue Team** để học cách xây Guardrails phòng thủ, rồi đóng vai **Red Team** để tấn công agent **Red** hoặc **Red Advance**.  
 > ✅ Làm theo **Checkpoint 1 → 5** trong [`CHECKPOINTS.md`](CHECKPOINTS.md) · nộp theo [`SUBMISSION.md`](SUBMISSION.md).
